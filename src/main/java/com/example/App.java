@@ -16,9 +16,9 @@ public class App
         OpenAiService service = new OpenAiService(apiKey);
         
         CompletionRequest request = CompletionRequest.builder()
-            .prompt("Wat is Erasmus Hogeschool Brussel? Try to be concise!")
-            .model("text-ada-001")
-            .maxTokens(100)
+            .prompt("Wat is ErasmusHogeschool Brussel? Wees bondig!")
+            .model("text-davinci-003")
+            .maxTokens(300)
             .build();
         CompletionResult response = service.createCompletion(request); String generatedText = response.getChoices().get(0).getText(); System.out.println(generatedText);
     }
