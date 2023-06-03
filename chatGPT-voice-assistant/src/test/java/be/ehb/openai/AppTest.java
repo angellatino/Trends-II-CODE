@@ -1,4 +1,4 @@
-package com.example;
+package be.ehb.openai;
 
 import static org.junit.Assert.assertTrue;
 

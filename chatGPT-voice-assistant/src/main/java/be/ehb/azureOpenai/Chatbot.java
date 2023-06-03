@@ -1,4 +1,4 @@
-package be.ehb;
+package be.ehb.azureOpenai;
 
 import java.util.ArrayList;
 import java.util.List;

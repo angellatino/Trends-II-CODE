@@ -1,4 +1,4 @@
-package be.ehb;
+package be.ehb.openai;
 
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.CompletionRequest;

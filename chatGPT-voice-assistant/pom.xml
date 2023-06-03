@@ -7,7 +7,6 @@
   <groupId>be.ehb</groupId>
   <artifactId>chatgpt-voice-assistant</artifactId>
   <version>0.0.1</version>
-
   <name>chatgpt-voice-assistant</name>
   <url>http://www.ehb.be</url>
 
@@ -17,33 +16,75 @@
     <maven.compiler.target>20</maven.compiler.target>
   </properties>
 
-  <dependencies>
+    <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-sdk-bom</artifactId>
+        <version>1.2.9</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
+  <dependencies>
+    <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-ai-openai</artifactId>
+        <version>1.0.0-beta.1</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-slf4j-impl</artifactId>
+        <version>2.13.3</version>
+    </dependency>
     <dependency>
       <groupId>com.theokanning.openai-gpt3-java</groupId>
       <artifactId>client</artifactId>
       <version>0.10.0</version>
     </dependency>
-
     <dependency>
       <groupId>com.theokanning.openai-gpt3-java</groupId>
       <artifactId>service</artifactId>
       <version>0.10.0</version>
     </dependency>
-
     <dependency>
       <groupId>com.theokanning.openai-gpt3-java</groupId>
       <artifactId>api</artifactId>
       <version>0.10.0</version>
     </dependency>
-
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>2.15.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.15.2</version>
+    </dependency>
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.15.2</version>
+    </dependency>
+    <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-xml</artifactId>
+        <version>2.15.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>2.15.2</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -91,16 +132,4 @@
       </plugins>
     </pluginManagement>
   </build>
-
-  <dependencyManagement>
-    <dependencies>
-
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-annotations</artifactId>
-        <version>2.10.1</version>
-      </dependency>
-
-    </dependencies>
-  </dependencyManagement>
 </project>
