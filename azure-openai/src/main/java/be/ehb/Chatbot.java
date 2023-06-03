@@ -1,4 +1,4 @@
-package com.example;
+package be.ehb;
 
 import java.util.ArrayList;
 import java.util.List;
