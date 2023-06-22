@@ -1,5 +1,9 @@
 package be.ehb.azureOpenai;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,11 +35,10 @@ public class Chatbot
         .buildClient();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new ChatMessage(ChatRole.USER).setContent("am I a perv?"));
-
+        chatMessages.add(new ChatMessage(ChatRole.USER).setContent("Zou ik als jongere politiek actief moeten zijn?"));
         ChatCompletions chatCompletions = client.getChatCompletions(deploymentOrModelId, new ChatCompletionsOptions(chatMessages));
 
-        System.out.printf("Model ID=%s is created at %d.%n", chatCompletions.getId(), chatCompletions.getCreated());
+        displayModelCreationInfo(chatCompletions.getId(), chatCompletions.getCreated());
         for (ChatChoice choice : chatCompletions.getChoices()) {
             ChatMessage message = choice.getMessage();
             System.out.printf("Index: %d, Chat Role: %s.%n", choice.getIndex(), message.getRole());
@@ -48,5 +51,15 @@ public class Chatbot
         // System.out.printf("Usage: number of prompt token is %d, "
         //         + "number of completion token is %d, and number of total tokens in request and response is %d.%n",
         //     usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
+    }
+
+    private static void displayModelCreationInfo(String modelId, long timestamp) {
+        Instant instant = Instant.ofEpochSecond(timestamp);
+        LocalDate creationDate = instant.atOffset(ZoneOffset.UTC).toLocalDate();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        String formattedDate = creationDate.format(formatter);
+
+        System.out.printf("Model ID=%s is created at %s.%n", modelId, formattedDate);
     }
 }
