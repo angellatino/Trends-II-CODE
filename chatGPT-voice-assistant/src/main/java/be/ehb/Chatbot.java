@@ -1,11 +1,12 @@
 package be.ehb;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -39,7 +40,7 @@ public class Chatbot {
 
     public static void main( String[] args ) throws InterruptedException, ExecutionException {
         SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
-        speechConfig.setSpeechRecognitionLanguage("nl-NL");
+        speechConfig.setSpeechRecognitionLanguage("en-US");
 
         recognizeFromMicrophone(speechConfig);
     }
@@ -112,11 +113,13 @@ public class Chatbot {
     }
 
     private static void displayModelCreationInfo(String modelId, long timestamp) {
-        Instant instant = Instant.ofEpochSecond(timestamp);
-        LocalDate creationDate = instant.atOffset(ZoneOffset.UTC).toLocalDate();
+        Instant instant = Instant.now();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-        String formattedDate = creationDate.format(formatter);
+        DateTimeFormatter formatter = DateTimeFormatter
+            .ofLocalizedDateTime( FormatStyle.SHORT )
+            .withLocale( Locale.FRANCE )
+            .withZone( ZoneId.systemDefault() );
+        String formattedDate = formatter.format(instant);
 
         System.out.printf("Model ID=%s is created at %s.%n", modelId, formattedDate);
     }
@@ -124,7 +127,7 @@ public class Chatbot {
     private static void textToSpeech(String text) throws InterruptedException, ExecutionException {
         SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
 
-        speechConfig.setSpeechSynthesisVoiceName("nl-BE-ArnaudNeural"); 
+        speechConfig.setSpeechSynthesisVoiceName("en-US-DavisNeural"); 
 
         SpeechSynthesizer speechSynthesizer = new SpeechSynthesizer(speechConfig);
         
