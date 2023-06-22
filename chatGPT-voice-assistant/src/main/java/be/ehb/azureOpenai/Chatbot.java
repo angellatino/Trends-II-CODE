@@ -23,7 +23,7 @@ public class Chatbot
 
         String key = System.getenv("AZURE_OPENAI_KEY");
         String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
-        String deploymentOrModelId = "testModel";
+        String deploymentOrModelId = "chatgpt";
 
         OpenAIClient client = new OpenAIClientBuilder()
         .credential(new AzureKeyCredential(key))
@@ -31,7 +31,7 @@ public class Chatbot
         .buildClient();
 
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new ChatMessage(ChatRole.USER).setContent("Is a token in the context of ai chatbots (roughly) the same as what a linguist would consider a morpheme?"));
+        chatMessages.add(new ChatMessage(ChatRole.USER).setContent("am I a perv?"));
 
         ChatCompletions chatCompletions = client.getChatCompletions(deploymentOrModelId, new ChatCompletionsOptions(chatMessages));
 
