@@ -1,4 +1,4 @@
-package be.ehb;
+package be.ehb.openai;
 
 import static org.junit.Assert.assertTrue;
 
@@ -7,7 +7,7 @@ import org.junit.Test;
 /**
  * Unit test for simple App.
  */
-public class ChatbotTest 
+public class AppTest 
 {
     /**
      * Rigorous Test :-)

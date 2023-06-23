@@ -1,22 +1,11 @@
-package be.ehb;
+package be.ehb.openai;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.OpenAIClientBuilder;
-import com.azure.ai.openai.models.ChatChoice;
-import com.azure.ai.openai.models.ChatCompletions;
-import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatMessage;
-import com.azure.ai.openai.models.ChatRole;
-import com.azure.core.credential.AzureKeyCredential;
+import com.theokanning.openai.service.OpenAiService;
+import com.theokanning.openai.completion.CompletionRequest;
+import com.theokanning.openai.completion.CompletionResult;
 import com.microsoft.cognitiveservices.speech.CancellationDetails;
 import com.microsoft.cognitiveservices.speech.CancellationReason;
 import com.microsoft.cognitiveservices.speech.ResultReason;
@@ -28,12 +17,15 @@ import com.microsoft.cognitiveservices.speech.SpeechSynthesisResult;
 import com.microsoft.cognitiveservices.speech.SpeechSynthesizer;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
 
-public class Chatbot {
+/**
+ * Hello world!
+ *
+ */
+public class App 
+{
     private static final  String speechKey = System.getenv("SPEECH_KEY");
     private static final  String speechRegion = System.getenv("SPEECH_REGION");
-    private static final String key = System.getenv("AZURE_OPENAI_KEY");
-    private static final String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
-    private static final String deploymentOrModelId = "chatgpt";
+    private static final String apiKey = "YOUR_API_KEY_HERE";
 
     private static SpeechRecognizer speechRecognizer;
 
@@ -86,39 +78,15 @@ public class Chatbot {
 
     private static String queryChatbot(String question) {
 
-        // OpenAIClient client = new OpenAIClientBuilder()
-        // .credential(new NonAzureOpenAIKeyCredential("{openai-secret-key}"))
-        // .buildClient();
-
-        OpenAIClient client = new OpenAIClientBuilder()
-        .credential(new AzureKeyCredential(key))
-        .endpoint(endpoint)
-        .buildClient();
-
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new ChatMessage(ChatRole.USER).setContent(question));
-
-        ChatCompletions chatCompletions = client.getChatCompletions(deploymentOrModelId, new ChatCompletionsOptions(chatMessages));
-
-        displayModelCreationInfo(chatCompletions.getId(), chatCompletions.getCreated());
-        for (ChatChoice choice : chatCompletions.getChoices()) {
-            ChatMessage message = choice.getMessage();
-            System.out.printf("Index: %d, Chat Role: %s.%n", choice.getIndex(), message.getRole());
-            System.out.println("Message:");
-            System.out.println(message.getContent());
-            return message.getContent();
-        }
-        return "error";
-    }
-
-    private static void displayModelCreationInfo(String modelId, long timestamp) {
-        Instant instant = Instant.ofEpochSecond(timestamp);
-        LocalDate creationDate = instant.atOffset(ZoneOffset.UTC).toLocalDate();
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-        String formattedDate = creationDate.format(formatter);
-
-        System.out.printf("Model ID=%s is created at %s.%n", modelId, formattedDate);
+        OpenAiService service = new OpenAiService(apiKey);
+        
+        CompletionRequest request = CompletionRequest.builder()
+            .prompt(question)
+            .model("text-davinci-003")
+            .maxTokens(300)
+            .build();
+        CompletionResult response = service.createCompletion(request); String generatedText = response.getChoices().get(0).getText();
+        return generatedText;
     }
 
     private static void textToSpeech(String text) throws InterruptedException, ExecutionException {
