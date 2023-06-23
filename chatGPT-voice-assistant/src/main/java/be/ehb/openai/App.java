@@ -81,7 +81,7 @@ public class App
         OpenAiService service = new OpenAiService(apiKey);
         
         CompletionRequest request = CompletionRequest.builder()
-            .prompt("Wat is Erasmushogeschool Brussel? Wees bondig!")
+            .prompt(question)
             .model("text-davinci-003")
             .maxTokens(300)
             .build();
