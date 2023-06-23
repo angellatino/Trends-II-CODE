@@ -176,7 +176,6 @@ public class Chatbot {
             return "";
         }
 
-
         /* 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(new ChatMessage(ChatRole.USER).setContent("Sing the following song: " + song));
