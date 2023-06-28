@@ -1,17 +1,24 @@
 package be.ehb.azureOpenai;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,8 +51,11 @@ public class Chatbot {
     private static final String key = System.getenv("AZURE_OPENAI_KEY");
     private static final String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
     private static final String deploymentOrModelId = "chatgpt";
-    private static String prompt;
 
+    private static final Logger logger = LoggerFactory.getLogger(Chatbot.class);
+
+    private static String prompt;
+    private static byte[] audioFile;
     private static SpeechRecognizer speechRecognizer;
     private static SpeechSynthesizer speechSynthesizer;
 
@@ -53,12 +63,42 @@ public class Chatbot {
         SpringApplication.run(Chatbot.class, args);
     }
 
+    // Om te testen op domain, daarnaS in de frontend aanpassen naar /chatbot en van String naar void
     @GetMapping("/")
     public String home() {
         return "Homepage";
     }
 
-    @PostMapping("/startRecording")
+    @GetMapping("/logs")
+    public String getLogs() {
+        // Capture the logs in a ByteArrayOutputStream
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps = new PrintStream(baos);
+        logger.info("Fetching logs...");
+        logger.info("Additional log statements if needed");
+
+        // Redirect System.out to the ByteArrayOutputStream
+        PrintStream oldOut = System.out;
+        System.setOut(ps);
+
+        // Print the logs
+        logger.info("Printing logs...");
+        logger.warn("This is a warning log");
+        logger.error("This is an error log");
+
+        // Restore System.out
+        System.out.flush();
+        System.setOut(oldOut);
+
+        // Get the logs from the ByteArrayOutputStream as a string
+        String logs = baos.toString();
+
+        // Return the logs as part of the API response
+        return logs;
+    }
+
+
+     @PostMapping("/startRecording")
     public String startRecording() {
         try {
             SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
@@ -66,9 +106,9 @@ public class Chatbot {
 
             recognizeFromMicrophone(speechConfig);
 
-            return "Started recording";
+            return "Started recording: " + prompt;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to start recording", e);
             return "Failed to start recording";
         }
     }
@@ -87,23 +127,26 @@ public class Chatbot {
     }
 
     @PostMapping("/startSynthesizing")
-    public String startSynthesizing() {
+    public ResponseEntity<Map<String, Object>> startSynthesizing() {
         try {
             String chatbotResponse = queryChatbot(prompt);
-            textToSpeech(chatbotResponse);
+            audioFile = textToSpeech(chatbotResponse);
 
             if (speechRecognizer != null) {
-            speechRecognizer.stopContinuousRecognitionAsync();
-            speechRecognizer.close();
-            speechRecognizer = null;
-
-            return "Started and stop synthesizing";
-        } else {
-            return "Started but didn't stop synthesizing";
+                speechRecognizer.stopContinuousRecognitionAsync();
+                speechRecognizer.close();
+                speechRecognizer = null;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Failed to start and stop synthesizing";
+
+            // Create a custom response object
+            Map<String, Object> responseObject = new HashMap<>();
+            responseObject.put("audioFile", audioFile);
+            responseObject.put("chatbotResponse", chatbotResponse);
+            
+            return ResponseEntity.ok(responseObject);
+         } catch (Exception e) {
+            logger.error("Failed to start and stop synthesizing", e);
+            return ResponseEntity.status(500).body(null);
         }
     }
 
@@ -111,23 +154,23 @@ public class Chatbot {
         AudioConfig audioConfig = AudioConfig.fromDefaultMicrophoneInput();
         speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
-        System.out.println("Speak into your microphone.");
+        logger.info("Speak into your microphone.");
         Future<SpeechRecognitionResult> task = speechRecognizer.recognizeOnceAsync();
         SpeechRecognitionResult speechRecognitionResult = task.get();
 
         if (speechRecognitionResult.getReason() == ResultReason.RecognizedSpeech) {
             prompt = speechRecognitionResult.getText();
-            System.out.println("RECOGNIZED: Text=" + prompt);
+            logger.info("RECOGNIZED: Text=" + prompt);
         } else if (speechRecognitionResult.getReason() == ResultReason.NoMatch) {
-            System.out.println("NOMATCH: Speech could not be recognized.");
+            logger.info("NOMATCH: Speech could not be recognized.");
         } else if (speechRecognitionResult.getReason() == ResultReason.Canceled) {
             CancellationDetails cancellation = CancellationDetails.fromResult(speechRecognitionResult);
-            System.out.println("CANCELED: Reason=" + cancellation.getReason());
+            logger.info("CANCELED: Reason=" + cancellation.getReason());
 
             if (cancellation.getReason() == CancellationReason.Error) {
-                System.out.println("CANCELED: ErrorCode=" + cancellation.getErrorCode());
-                System.out.println("CANCELED: ErrorDetails=" + cancellation.getErrorDetails());
-                System.out.println("CANCELED: Did you set the speech resource key and region values?");
+                logger.info("CANCELED: ErrorCode=" + cancellation.getErrorCode());
+                logger.info("CANCELED: ErrorDetails=" + cancellation.getErrorDetails());
+                logger.info("CANCELED: Did you set the speech resource key and region values?");
             }
         }
     }
@@ -147,12 +190,12 @@ public class Chatbot {
         displayModelCreationInfo(chatCompletions.getId(), chatCompletions.getCreated());
         for (ChatChoice choice : chatCompletions.getChoices()) {
             ChatMessage message = choice.getMessage();
-            System.out.printf("Index: %d, Chat Role: %s.%n", choice.getIndex(), message.getRole());
-            System.out.println("Message:");
-            System.out.println(message.getContent());
+            logger.info("Index: %d, Chat Role: %s.%n", choice.getIndex(), message.getRole());
+            logger.info("Message:");
+            logger.info(message.getContent());
             return message.getContent();
         }
-        return "error";
+        return "";
     }
 
     private static void displayModelCreationInfo(String modelId, long timestamp) {
@@ -164,33 +207,33 @@ public class Chatbot {
             .withZone( ZoneId.systemDefault() );
         String formattedDate = formatter.format(instant);
 
-        System.out.printf("Model ID=%s is created at %s.%n", modelId, formattedDate);
+        logger.info("Model ID=%s is created at %s.%n", modelId, formattedDate);
     }
 
-    private static void textToSpeech(String text) throws InterruptedException, ExecutionException {
+    private static byte[] textToSpeech(String text) throws InterruptedException, ExecutionException {
         SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
         speechConfig.setSpeechSynthesisVoiceName("en-US-DavisNeural"); 
         speechSynthesizer = new SpeechSynthesizer(speechConfig);
         
-        if (text.isEmpty())
-        {
-            return;
+        if (text.isEmpty()) {
+            return new byte[0];
         }
 
         SpeechSynthesisResult speechSynthesisResult = speechSynthesizer.SpeakTextAsync(text).get();
 
         if (speechSynthesisResult.getReason() == ResultReason.SynthesizingAudioCompleted) {
-            System.out.println("Speech synthesized to speaker for text [" + text + "]");
-        }
-        else if (speechSynthesisResult.getReason() == ResultReason.Canceled) {
+            logger.info("Speech synthesized to speaker for text [" + text + "]");
+            return speechSynthesisResult.getAudioData();
+        } else if (speechSynthesisResult.getReason() == ResultReason.Canceled) {
             SpeechSynthesisCancellationDetails cancellation = SpeechSynthesisCancellationDetails.fromResult(speechSynthesisResult);
-            System.out.println("CANCELED: Reason=" + cancellation.getReason());
+            logger.info("CANCELED: Reason=" + cancellation.getReason());
 
             if (cancellation.getReason() == CancellationReason.Error) {
-                System.out.println("CANCELED: ErrorCode=" + cancellation.getErrorCode());
-                System.out.println("CANCELED: ErrorDetails=" + cancellation.getErrorDetails());
-                System.out.println("CANCELED: Did you set the speech resource key and region values?");
+                logger.info("CANCELED: ErrorCode=" + cancellation.getErrorCode());
+                logger.info("CANCELED: ErrorDetails=" + cancellation.getErrorDetails());
+                logger.info("CANCELED: Did you set the speech resource key and region values?");
             }
         }
+        return new byte[0];
     }
 }
