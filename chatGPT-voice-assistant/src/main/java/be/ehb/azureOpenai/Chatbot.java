@@ -10,6 +10,12 @@ import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.ChatChoice;
@@ -29,23 +35,79 @@ import com.microsoft.cognitiveservices.speech.SpeechSynthesisResult;
 import com.microsoft.cognitiveservices.speech.SpeechSynthesizer;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
 
+@SpringBootApplication
+@RestController
 public class Chatbot {
-    private static final  String speechKey = System.getenv("SPEECH_KEY");
-    private static final  String speechRegion = System.getenv("SPEECH_REGION");
+
+    private static final String speechKey = System.getenv("SPEECH_KEY");
+    private static final String speechRegion = System.getenv("SPEECH_REGION");
     private static final String key = System.getenv("AZURE_OPENAI_KEY");
     private static final String endpoint = System.getenv("AZURE_OPENAI_ENDPOINT");
     private static final String deploymentOrModelId = "chatgpt";
+    private static String prompt;
 
     private static SpeechRecognizer speechRecognizer;
+    private static SpeechSynthesizer speechSynthesizer;
 
-    public static void main( String[] args ) throws InterruptedException, ExecutionException {
-        SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
-        speechConfig.setSpeechRecognitionLanguage("en-US");
-
-        recognizeFromMicrophone(speechConfig);
+    public static void main(String[] args) {
+        SpringApplication.run(Chatbot.class, args);
     }
 
-    public static void recognizeFromMicrophone(SpeechConfig speechConfig) throws InterruptedException, ExecutionException {
+    @GetMapping("/")
+    public String home() {
+        return "Homepage";
+    }
+
+    @PostMapping("/startRecording")
+    public String startRecording() {
+        try {
+            SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
+            speechConfig.setSpeechRecognitionLanguage("en-US");
+
+            recognizeFromMicrophone(speechConfig);
+
+            return "Started recording";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Failed to start recording";
+        }
+    }
+
+    @PostMapping("/stopRecording")
+    public String stopRecording() {
+        if (speechRecognizer != null) {
+            speechRecognizer.stopContinuousRecognitionAsync();
+            speechRecognizer.close();
+            speechRecognizer = null;
+
+            return "Stopped recording";
+        } else {
+            return "Recording is not currently active";
+        }
+    }
+
+    @PostMapping("/startSynthesizing")
+    public String startSynthesizing() {
+        try {
+            String chatbotResponse = queryChatbot(prompt);
+            textToSpeech(chatbotResponse);
+
+            if (speechRecognizer != null) {
+            speechRecognizer.stopContinuousRecognitionAsync();
+            speechRecognizer.close();
+            speechRecognizer = null;
+
+            return "Started and stop synthesizing";
+        } else {
+            return "Started but didn't stop synthesizing";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Failed to start and stop synthesizing";
+        }
+    }
+
+    private void recognizeFromMicrophone(SpeechConfig speechConfig) throws InterruptedException, ExecutionException {
         AudioConfig audioConfig = AudioConfig.fromDefaultMicrophoneInput();
         speechRecognizer = new SpeechRecognizer(speechConfig, audioConfig);
 
@@ -54,20 +116,11 @@ public class Chatbot {
         SpeechRecognitionResult speechRecognitionResult = task.get();
 
         if (speechRecognitionResult.getReason() == ResultReason.RecognizedSpeech) {
-            String text = speechRecognitionResult.getText();
-            System.out.println("RECOGNIZED: Text=" + text);
-
-            if (isStopCommand(text)) {
-                System.exit(0);
-            }
-            
-            String answer = queryChatbot(text);
-            textToSpeech(answer);
-        }
-        else if (speechRecognitionResult.getReason() == ResultReason.NoMatch) {
+            prompt = speechRecognitionResult.getText();
+            System.out.println("RECOGNIZED: Text=" + prompt);
+        } else if (speechRecognitionResult.getReason() == ResultReason.NoMatch) {
             System.out.println("NOMATCH: Speech could not be recognized.");
-        }
-        else if (speechRecognitionResult.getReason() == ResultReason.Canceled) {
+        } else if (speechRecognitionResult.getReason() == ResultReason.Canceled) {
             CancellationDetails cancellation = CancellationDetails.fromResult(speechRecognitionResult);
             System.out.println("CANCELED: Reason=" + cancellation.getReason());
 
@@ -77,19 +130,9 @@ public class Chatbot {
                 System.out.println("CANCELED: Did you set the speech resource key and region values?");
             }
         }
-
-        recognizeFromMicrophone(speechConfig);
-    }
-
-    public static boolean isStopCommand(String text) {
-        return text.equalsIgnoreCase("stop.");
     }
 
     private static String queryChatbot(String question) {
-
-        // OpenAIClient client = new OpenAIClientBuilder()
-        // .credential(new NonAzureOpenAIKeyCredential("{openai-secret-key}"))
-        // .buildClient();
 
         OpenAIClient client = new OpenAIClientBuilder()
         .credential(new AzureKeyCredential(key))
@@ -126,10 +169,8 @@ public class Chatbot {
 
     private static void textToSpeech(String text) throws InterruptedException, ExecutionException {
         SpeechConfig speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
-
         speechConfig.setSpeechSynthesisVoiceName("en-US-DavisNeural"); 
-
-        SpeechSynthesizer speechSynthesizer = new SpeechSynthesizer(speechConfig);
+        speechSynthesizer = new SpeechSynthesizer(speechConfig);
         
         if (text.isEmpty())
         {
